@@ -1,0 +1,7 @@
+/target
+
+# Build outputs — reproducible with ./bundle.sh and ./release.sh
+/bubbleTranslate.app
+/bubbleTranslate.dmg
+
+.DS_Store
