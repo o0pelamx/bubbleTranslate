@@ -3,16 +3,53 @@
 Select text anywhere on macOS — a PDF, a terminal, a browser, an editor — and a
 small bubble appears at the cursor with the translation.
 
-## Setup
+## Install
+
+### From the DMG
+
+[**Download bubbleTranslate.dmg**](https://github.com/o0pelamx/bubbleTranslate/raw/main/bubbleTranslate.dmg)
+— no Rust toolchain needed. Open it and drag **bubbleTranslate.app** onto the
+Applications folder.
+
+The app is ad-hoc signed rather than notarized, so macOS blocks the first
+launch with *"Apple could not verify bubbleTranslate is free of malware."*
+That is Gatekeeper reacting to the missing Apple Developer signature, not to
+anything the app does. To get past it:
+
+1. Double-click the app and dismiss the warning.
+2. Open **System Settings › Privacy & Security**, scroll to Security, and click
+   **Open Anyway** next to the message about bubbleTranslate.
+3. Confirm once more when the app launches.
+
+On macOS 15 and later, Control-clicking the app and choosing *Open* no longer
+bypasses this — Open Anyway is the route. If you would rather not go through
+Settings, stripping the quarantine flag has the same effect:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/bubbleTranslate.app
+```
+
+This step is only needed once, and only for a build downloaded from the
+internet. Building from source skips it entirely.
+
+### From source
 
 ```sh
 ./bundle.sh
 open bubbleTranslate.app
 ```
 
-The first launch asks for **Accessibility** permission. Grant it in
-System Settings › Privacy & Security › Accessibility, then **relaunch** — the
-event tap is installed at startup, so it needs a restart to take effect.
+### Granting Accessibility
+
+Either route, the first launch asks for **Accessibility** permission. Grant it
+in System Settings › Privacy & Security › Accessibility, then **quit and
+relaunch** — the event tap is installed at startup, so it needs a restart to
+take effect.
+
+macOS ties this permission to the app's exact signature, and an ad-hoc
+signature changes with every rebuild. So after `./bundle.sh` or `./release.sh`,
+the grant silently stops applying even though the switch still looks on: turn
+it off and on again, or remove the entry with **−** and re-grant.
 
 The main window opens on launch, centred and sized to fit your display. Reopen
 it any time from the **menu bar** (🌐) or by launching the app again — either
@@ -45,8 +82,8 @@ Every change saves immediately to the config file.
 ```
 
 Drag-to-Applications layout. Without an Apple developer account the app is
-ad-hoc signed, so the DMG installs fine but Gatekeeper warns on first launch
-and the user must right-click › Open once.
+ad-hoc signed, so the DMG installs fine but Gatekeeper blocks the first launch
+and the user has to clear it once — see [From the DMG](#from-the-dmg).
 
 With a `Developer ID Application` certificate ($99/year Apple Developer
 Program) the same script produces a release that opens with no warning:

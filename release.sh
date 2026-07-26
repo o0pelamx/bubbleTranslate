@@ -3,7 +3,7 @@
 #
 # Works with no Apple developer account: the app is ad-hoc signed and the DMG
 # installs fine, but Gatekeeper warns on first launch and the user has to
-# right-click › Open once.
+# clear it once via System Settings › Privacy & Security › Open Anyway.
 #
 # With an account, set both variables and the same script produces a release
 # that opens with no warning at all:
@@ -74,10 +74,17 @@ bubbleTranslate — by pelamx
 
 1. Drag bubbleTranslate.app onto the Applications folder.
 
-2. Launch it. macOS will ask for Accessibility permission; grant it in
+2. Launch it. macOS blocks the first launch and says it "could not verify"
+   the app — this app is not notarized by Apple. Dismiss that, then open
+   System Settings > Privacy & Security, scroll to Security, and click
+   "Open Anyway". This is only needed once.
+
+   (Control-click > Open does not work for this on macOS 15 and later.)
+
+3. macOS will ask for Accessibility permission; grant it in
    System Settings > Privacy & Security > Accessibility.
 
-3. QUIT AND RELAUNCH. The permission only takes effect on a fresh start,
+4. QUIT AND RELAUNCH. The permission only takes effect on a fresh start,
    because the event tap is installed when the app launches.
 
 Then select text anywhere — double-click a word, drag a phrase, triple-click
@@ -106,6 +113,7 @@ echo
 echo "built $DMG ($(du -h "$DMG" | cut -f1))"
 if [[ -z "$NOTARY_PROFILE" ]]; then
     echo
-    echo "Not notarized. On another Mac this needs right-click > Open on first"
-    echo "launch. See the header of this script for the signed release path."
+    echo "Not notarized. On another Mac the first launch is blocked; clear it once"
+    echo "via System Settings > Privacy & Security > Open Anyway. See this script's"
+    echo "header for the signed, warning-free release path."
 fi
