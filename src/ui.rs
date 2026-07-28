@@ -393,13 +393,15 @@ impl BubbleApp {
     fn draw_body(&mut self, ui: &mut egui::Ui) -> bool {
         let mut dismiss = false;
 
-        // -- header: byline and the close button --------------------------
+        // -- header: name, byline and the close button --------------------
         ui.horizontal_top(|ui| {
             ui.label(
-                egui::RichText::new("by pelamx")
+                egui::RichText::new("bubbleTranslate")
                     .size(11.5)
-                    .color(TEXT_MUTED),
+                    .color(TEXT_SECONDARY),
             );
+            // Right to left, so the close button takes the corner and the
+            // byline sits just inside it.
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 if ui
                     .add(egui::Button::new(egui::RichText::new("✕").size(14.0)).frame(false))
@@ -408,6 +410,11 @@ impl BubbleApp {
                 {
                     dismiss = true;
                 }
+                ui.label(
+                    egui::RichText::new("by pelamx")
+                        .size(11.5)
+                        .color(TEXT_MUTED),
+                );
             });
         });
 
