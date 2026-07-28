@@ -52,15 +52,12 @@ const FALLBACK_FONT: &str = "/System/Library/Fonts/Supplemental/Arial Unicode.tt
 enum State {
     Hidden,
     Working {
-        source_text: String,
         via: CaptureSource,
     },
     Done {
-        source_text: String,
         result: Translation,
     },
     Failed {
-        source_text: String,
         errors: Vec<(Provider, TranslateError)>,
     },
 }
@@ -130,13 +127,9 @@ impl BubbleApp {
     fn drain_events(&mut self, ctx: &egui::Context) {
         while let Ok(event) = self.events.try_recv() {
             match event {
-                UiEvent::Working {
-                    at,
-                    source_text,
-                    via,
-                } => {
+                UiEvent::Working { at, via } => {
                     self.anchor = at;
-                    self.state = State::Working { source_text, via };
+                    self.state = State::Working { via };
                     self.settings_open = false;
                     self.copied_at = None;
                     self.show(ctx);
@@ -146,24 +139,15 @@ impl BubbleApp {
                     result,
                 } => {
                     self.main.lock().unwrap().push_recent(
-                        source_text.clone(),
+                        source_text,
                         result.text.clone(),
                         result.provider,
                     );
-                    self.state = State::Done {
-                        source_text,
-                        result,
-                    };
+                    self.state = State::Done { result };
                     self.shown_at = Instant::now();
                 }
-                UiEvent::Failed {
-                    source_text,
-                    errors,
-                } => {
-                    self.state = State::Failed {
-                        source_text,
-                        errors,
-                    };
+                UiEvent::Failed { errors } => {
+                    self.state = State::Failed { errors };
                     self.shown_at = Instant::now();
                 }
                 UiEvent::ManualDone(result) => {
@@ -409,22 +393,13 @@ impl BubbleApp {
     fn draw_body(&mut self, ui: &mut egui::Ui) -> bool {
         let mut dismiss = false;
 
-        // -- header: source text and the close button --------------------
+        // -- header: byline and the close button --------------------------
         ui.horizontal_top(|ui| {
-            let source = match &self.state {
-                State::Working { source_text, .. }
-                | State::Done { source_text, .. }
-                | State::Failed { source_text, .. } => source_text.as_str(),
-                State::Hidden => "",
-            };
-            ui.vertical(|ui| {
-                ui.set_max_width(BUBBLE_WIDTH - 76.0);
-                ui.label(
-                    egui::RichText::new(truncate(source, 160))
-                        .size(12.5)
-                        .color(TEXT_SECONDARY),
-                );
-            });
+            ui.label(
+                egui::RichText::new("by pelamx")
+                    .size(11.5)
+                    .color(TEXT_MUTED),
+            );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 if ui
                     .add(egui::Button::new(egui::RichText::new("✕").size(14.0)).frame(false))
@@ -676,14 +651,6 @@ impl BubbleApp {
             self.engine.request(Request::Retranslate);
         }
     }
-}
-
-fn truncate(text: &str, max_chars: usize) -> String {
-    let mut out: String = text.chars().take(max_chars).collect();
-    if text.chars().count() > max_chars {
-        out.push('…');
-    }
-    out
 }
 
 fn install_fonts(ctx: &egui::Context) {

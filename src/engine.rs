@@ -30,20 +30,19 @@ pub enum Request {
 }
 
 pub enum UiEvent {
-    /// A translation is in flight. Carries the captured text so the bubble can
-    /// show the original immediately.
+    /// A translation is in flight, so the bubble can anchor itself and spin.
     Working {
         at: (f64, f64),
-        source_text: String,
         via: CaptureSource,
     },
+    /// The captured text rides along for the main window's Recent list only.
+    /// The bubble shows the translation by itself.
     Done {
         source_text: String,
         result: Translation,
     },
     /// Every provider in the chain refused. Carries each one's reason.
     Failed {
-        source_text: String,
         errors: Vec<(Provider, TranslateError)>,
     },
     /// Result of a main-window translate-box request.
@@ -196,11 +195,7 @@ fn run(rx: Receiver<Request>, config: Arc<Mutex<Config>>, ui: Sender<UiEvent>, w
         last_text = text.clone();
         last_at = at;
 
-        let _ = ui.send(UiEvent::Working {
-            at,
-            source_text: text.clone(),
-            via,
-        });
+        let _ = ui.send(UiEvent::Working { at, via });
         wake_ui();
 
         let event = match translator.translate(&text, &cfg) {
@@ -220,10 +215,7 @@ fn run(rx: Receiver<Request>, config: Arc<Mutex<Config>>, ui: Sender<UiEvent>, w
                 for (provider, err) in &errors {
                     crate::trace!("translate {} FAILED: {err}", provider.label());
                 }
-                UiEvent::Failed {
-                    source_text: text,
-                    errors,
-                }
+                UiEvent::Failed { errors }
             }
         };
         let _ = ui.send(event);
