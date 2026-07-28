@@ -165,14 +165,20 @@ fn clipboard_selection() -> Option<String> {
     let previous = read_pasteboard_string(&pasteboard);
 
     SYNTHESIZING.store(true, Ordering::SeqCst);
+    let started = Instant::now();
     let posted = post_command_c();
     // The flag stays up a moment past the post so the tap also drops the
     // trailing key-up and flags-changed events.
     let result = if posted {
-        wait_for_pasteboard_change(&pasteboard, before_count, Duration::from_millis(400))
+        wait_for_pasteboard_change(&pasteboard, before_count, COPY_BUDGET)
     } else {
         None
     };
+    crate::trace!(
+        "clipboard posted={posted} changed={} after {}ms",
+        result.is_some(),
+        started.elapsed().as_millis(),
+    );
     std::thread::sleep(Duration::from_millis(30));
     SYNTHESIZING.store(false, Ordering::SeqCst);
 
@@ -190,6 +196,15 @@ fn clipboard_selection() -> Option<String> {
 
     copied
 }
+
+/// How long to wait for the target app to put the copy on the pasteboard.
+///
+/// Only ever reached when the copy produces nothing: the poll below returns the
+/// moment the change count moves, so a responsive app is unaffected by how
+/// generous this is. That asymmetry is why it is set well above any observed
+/// copy latency — the cost of waiting too long is paid on a background thread,
+/// while the cost of giving up too early is a selection that silently vanishes.
+const COPY_BUDGET: Duration = Duration::from_millis(1200);
 
 fn post_command_c() -> bool {
     let Ok(source) = CGEventSource::new(CGEventSourceStateID::CombinedSessionState) else {
@@ -223,7 +238,7 @@ fn wait_for_pasteboard_change(
 ) -> Option<String> {
     let deadline = Instant::now() + budget;
     while Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(20));
+        std::thread::sleep(Duration::from_millis(10));
         if pasteboard.changeCount() != before {
             return read_pasteboard_string(pasteboard);
         }
