@@ -46,10 +46,43 @@ in System Settings › Privacy & Security › Accessibility, then **quit and
 relaunch** — the event tap is installed at startup, so it needs a restart to
 take effect.
 
-macOS ties this permission to the app's exact signature, and an ad-hoc
-signature changes with every rebuild. So after `./bundle.sh` or `./release.sh`,
-the grant silently stops applying even though the switch still looks on: turn
-it off and on again, or remove the entry with **−** and re-grant.
+macOS ties this permission to the app's exact signature. An ad-hoc signature —
+what `codesign --sign -` produces — has no stable identity, so its designated
+requirement is the binary's own hash:
+
+```
+designated => cdhash H"e39883dc..."
+```
+
+Every rebuild changes that hash, macOS sees an unrelated program, and the grant
+stops applying **while the switch still reads "on"** — a confusing failure,
+because nothing looks wrong.
+
+Run `./setup-signing.sh` once to stop this. It creates a self-signed
+certificate and `bundle.sh` signs with it from then on, which pins the
+requirement to the identity instead:
+
+```
+designated => identifier "com.pelamx.bubbleTranslate"
+              and certificate root = H"c0a427ea..."
+```
+
+Later builds keep satisfying that, so the grant survives rebuilds. Grant
+Accessibility once after the switch and you are done. Without the certificate
+the app still builds and runs — it just costs a re-grant every time.
+
+The certificate is self-signed, so **Gatekeeper is unaffected**: a downloaded
+DMG still shows the "could not verify" warning. Removing that needs a paid
+Developer ID, covered under [Building an installer](#building-an-installer).
+The private key lives in `~/.config/bubbletranslate` (mode 600, outside the
+repo). Back it up — losing it means a new certificate, and one more re-grant.
+
+If a grant has already gone stale, clearing the entry is quicker than hunting
+the toggle:
+
+```sh
+tccutil reset Accessibility com.pelamx.bubbleTranslate
+```
 
 The main window opens on launch, centred and sized to fit your display. Reopen
 it any time from the **menu bar** (🌐) or by launching the app again — either

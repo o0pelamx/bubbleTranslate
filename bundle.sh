@@ -42,8 +42,30 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Ad-hoc signature. Re-signing with the same identifier preserves the TCC grant.
-codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
+# Sign with the self-signed certificate from ./setup-signing.sh when it exists.
+#
+# This is what keeps the Accessibility grant alive across rebuilds. An ad-hoc
+# signature's designated requirement is the binary's own hash, so every build
+# looks like a different program to macOS and the grant stops applying while
+# still appearing enabled. A certificate pins the requirement to the identity
+# instead, and later builds keep satisfying it.
+SIGNING_KEYCHAIN="bubbletranslate-signing"
+SIGNING_CERT="bubbleTranslate Signing"
+KEYCHAIN_PW_FILE="$HOME/.config/bubbletranslate/signing.pw"
+
+if security find-identity -p codesigning "$SIGNING_KEYCHAIN" 2>/dev/null | grep -q "$SIGNING_CERT"; then
+    # Unlocking is a no-op when it is already open, and the build fails with an
+    # opaque error if it is not.
+    if [[ -f "$KEYCHAIN_PW_FILE" ]]; then
+        security unlock-keychain -p "$(cat "$KEYCHAIN_PW_FILE")" "$SIGNING_KEYCHAIN" 2>/dev/null || true
+    fi
+    codesign --force --sign "$SIGNING_CERT" --keychain "$SIGNING_KEYCHAIN" \
+        --identifier "$BUNDLE_ID" "$APP"
+    echo "signed with: $SIGNING_CERT (Accessibility grant survives rebuilds)"
+else
+    codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
+    echo "ad-hoc signed — run ./setup-signing.sh to stop re-granting Accessibility"
+fi
 
 echo
 echo "Built $APP"
